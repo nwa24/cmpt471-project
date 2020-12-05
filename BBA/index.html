@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="index.css">
+    <style>
+        video {
+            width: 640px;
+            height: 360px;
+        }
+    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <title>CMPT 471 Project</title>
+
+    <script src="BufferBasedRule.js" class="code"></script>
+
+    <script class="code">
+        function init() {
+            var url = 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd';
+            var video = document.querySelector('#videoPlayer');
+            var player = dashjs.MediaPlayer().create();
+            /* don't use dash.js default rules */
+
+            /* about the structure of a custom rule */
+            player.addABRCustomRule('qualitySwitchRules', 'BufferBasedRule', BufferBasedRule);
+            // player.addABRCustomRule('qualitySwitchRules', 'LowestBitRateRule', LowestBitrateRule);
+            player.updateSettings({
+                streaming: {
+                    stableBufferTime: 60,
+                    bufferTimeAtTopQuality: 60
+                }
+            })
+            player.initialize(video, url, true);
+        }
+    </script>
+</head>
+<body>
+<div>
+    <video id="videoPlayer" controls></video>
+</div>
+<script>
+    // runs init() once the DOM has fully loaded
+    document.addEventListener('DOMContentLoaded', function () {
+        init();
+    });
+</script>
+</body>
+</html>

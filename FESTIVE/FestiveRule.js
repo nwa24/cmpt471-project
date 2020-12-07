@@ -265,3 +265,4 @@ function FestiveRuleClass() {
 
 FestiveRuleClass.__dashjs_factory_name = 'FestiveRule';
 FestiveRule = dashjs.FactoryMaker.getClassFactory(FestiveRuleClass);
+

@@ -16,6 +16,10 @@
     <script src="BufferBasedRule.js" class="code"></script>
 
     <script class="code">
+        var videoData = {
+            bitRateArr: 0,
+            bufferLevelArr: 0
+        }
         function init() {
             var url = 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd';
             var video = document.querySelector('#videoPlayer');
@@ -32,6 +36,36 @@
                 }
             })
             player.initialize(video, url, true);
+
+            var eventPoller = setInterval(function () {
+                var streamInfo = player.getActiveStream().getStreamInfo();
+                var dashMetrics = player.getDashMetrics();
+                var dashAdapter = player.getDashAdapter();
+
+                if (dashMetrics && streamInfo) {
+                    const periodIdx = streamInfo.index;
+                    var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+                    var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+                    var bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
+                    videoData.bufferLevelArr = bufferLevel;
+                    document.getElementById('bufferLevel').innerText = bufferLevel + " secs";
+                    localStorage.setItem('BBABuffer', JSON.stringify(videoData.bufferLevelArr));
+                }
+            }, 1000);
+
+            if (video.webkitVideoDecodedByteCount !== undefined) {
+                var lastDecodedByteCount = 0;
+                const bitrateInterval = 5;
+                var bitrateCalculator = setInterval(function () {
+                    var calculatedBitrate = (((video.webkitVideoDecodedByteCount - lastDecodedByteCount) / 1000) * 8) / bitrateInterval;
+                    videoData.bitRateArr = calculatedBitrate;
+                    localStorage.setItem('BBABitRate', JSON.stringify(videoData.bitRateArr));
+                    document.getElementById('calculatedBitrate').innerText = Math.round(calculatedBitrate) + " Kbps";
+                    lastDecodedByteCount = video.webkitVideoDecodedByteCount;
+                }, bitrateInterval * 1000);
+            } else {
+                document.getElementById('chrome-only').style.display = "none";
+            }
         }
     </script>
 </head>
@@ -39,10 +73,114 @@
 <div>
     <video id="videoPlayer" controls></video>
 </div>
+<div>
+    <strong>Buffer level:</strong>
+    <span id="bufferLevel"></span>
+    <br>
+    <div id="chrome-only">
+        <strong>Calculated bitrate:</strong>
+        <span id="calculatedBitrate"></span>
+    </div>
+</div>
 <script>
     // runs init() once the DOM has fully loaded
     document.addEventListener('DOMContentLoaded', function () {
         init();
+    });
+</script>
+
+<h1>Bit rate over time</h1>
+<div id = "chart"></div>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="../bitGraph.js"></script>
+<script>
+    var lineArr = [];
+    var MAX_LENGTH = 100;
+    var duration = 500;
+    var chart = realTimeLineChart();
+
+    function initData() {
+      var now = new Date();
+      for (var i = 0; i < MAX_LENGTH; ++i) {
+        lineArr.push({
+          time: new Date(now.getTime() - ((MAX_LENGTH - i) * duration)),
+          x: 0
+        });
+      }
+    }
+
+    function updateData() {
+      var now = new Date();
+      try {
+        var receivedBitRate = JSON.parse(window.localStorage.getItem('BBABitRate'));
+
+        var bitData = {
+            time: now,
+            x : receivedBitRate
+        };
+        lineArr.push(bitData);
+
+
+        if (lineArr.length > 30) {
+            lineArr.shift();
+        }
+        d3.select("#chart").datum(lineArr).call(chart);
+      } catch (e) {
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      initData();
+      window.setInterval(updateData, 500);
+      d3.select("#chart").datum(lineArr).call(chart);
+    });
+</script>
+
+<h1>Buffer level over time</h1>
+<div id = "chart2"></div>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="../bufferGraph.js"></script>
+<script>
+    var lineArr2 = [];
+    var MAX_LENGTH2 = 100;
+    var duration2 = 500;
+    var chart2 = realTimeLineChart2();
+
+    function initData2() {
+      var now = new Date();
+      for (var i = 0; i < MAX_LENGTH2; ++i) {
+        lineArr2.push({
+          time: new Date(now.getTime() - ((MAX_LENGTH2 - i) * duration2)),
+          x: 0
+        });
+      }
+    }
+
+    function updateData2() {
+      var now = new Date();
+      try {
+        var receivedBufferRate = JSON.parse(window.localStorage.getItem('BBABuffer'));
+
+        var bitData2 = {
+            time: now,
+            //x : receivedBitRate
+            x: receivedBufferRate
+        };
+        lineArr2.push(bitData2);
+
+
+        if (lineArr2.length > 30) {
+            lineArr2.shift();
+        }
+        d3.select("#chart2").datum(lineArr2).call(chart2);
+      } catch (e) {
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      initData2();
+      window.setInterval(updateData2, 500);
+      d3.select("#chart2").datum(lineArr2).call(chart2);
     });
 </script>
 </body>

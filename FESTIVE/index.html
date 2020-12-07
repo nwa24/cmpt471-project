@@ -58,7 +58,7 @@
                 var bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
                 videoData.bufferLevelArr = bufferLevel;
                 document.getElementById('bufferLevel').innerText = bufferLevel + " secs";
-                localStorage.setItem('buffer', JSON.stringify(videoData.bufferLevelArr));
+                localStorage.setItem('FestiveBuffer', JSON.stringify(videoData.bufferLevelArr));
             }
         }, 1000);
 
@@ -68,7 +68,7 @@
             var bitrateCalculator = setInterval(function () {
                 var calculatedBitrate = (((video.webkitVideoDecodedByteCount - lastDecodedByteCount) / 1000) * 8) / bitrateInterval;
                 videoData.bitRateArr = calculatedBitrate;
-                localStorage.setItem('bitRate', JSON.stringify(videoData.bitRateArr));
+                localStorage.setItem('FestiveBitRate', JSON.stringify(videoData.bitRateArr));
                 document.getElementById('calculatedBitrate').innerText = Math.round(calculatedBitrate) + " Kbps";
                 lastDecodedByteCount = video.webkitVideoDecodedByteCount;
             }, bitrateInterval * 1000);
@@ -123,7 +123,7 @@
     function updateData() {
       var now = new Date();
       try {
-        var receivedBitRate = JSON.parse(window.localStorage.getItem('bitRate'));
+        var receivedBitRate = JSON.parse(window.localStorage.getItem('FestiveBitRate'));
 
         var bitData = {
             time: now,
@@ -170,12 +170,10 @@
     function updateData2() {
       var now = new Date();
       try {
-        //var receivedBitRate = JSON.parse(window.localStorage.getItem('bitRate'));
-        var receivedBufferRate = JSON.parse(window.localStorage.getItem('buffer'));
+        var receivedBufferRate = JSON.parse(window.localStorage.getItem('FestiveBuffer'));
 
         var bitData2 = {
             time: now,
-            //x : receivedBitRate
             x: receivedBufferRate
         };
         lineArr2.push(bitData2);

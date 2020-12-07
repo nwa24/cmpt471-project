@@ -1,3 +1,5 @@
+//Followed tutorial of bl.ocks.org
+
 function realTimeLineChart2() {
   var margin = {top: 20, right: 20, bottom: 20, left: 20},
       width = 800,

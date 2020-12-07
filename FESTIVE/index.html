@@ -56,7 +56,6 @@
                 var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
                 var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
                 var bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
-                var adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo)
                 videoData.bufferLevelArr = bufferLevel;
                 document.getElementById('bufferLevel').innerText = bufferLevel + " secs";
                 localStorage.setItem('buffer', JSON.stringify(videoData.bufferLevelArr));
@@ -101,10 +100,10 @@
 
 </script>
 
-<h1>Line Chart using D3.js</h1>
+<h1>Bit rate over time</h1>
 <div id = "chart"></div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
-<script src="../index.js"></script>
+<script src="../bitGraph.js"></script>
 <script>
     var lineArr = [];
     var MAX_LENGTH = 100;
@@ -125,13 +124,13 @@
       var now = new Date();
       try {
         var receivedBitRate = JSON.parse(window.localStorage.getItem('bitRate'));
-        var receivedBufferRate = JSON.parse(window.localStorage.getItem('buffer'));
+
         var bitData = {
             time: now,
-            //x : receivedBitRate,
-            x: receivedBufferRate
+            x : receivedBitRate
         };
         lineArr.push(bitData);
+
 
         if (lineArr.length > 30) {
             lineArr.shift();
@@ -141,19 +140,59 @@
       }
     }
 
-    function resize() {
-      if (d3.select("#chart svg").empty()) {
-        return;
-      }
-      chart.width(+d3.select("#chart").style("width").replace(/(px)/g, ""));
-      d3.select("#chart").call(chart);
-    }
-
     document.addEventListener("DOMContentLoaded", function() {
       initData();
       window.setInterval(updateData, 500);
       d3.select("#chart").datum(lineArr).call(chart);
-      d3.select(window).on('resize', resize);
+    });
+</script>
+
+<h1>Buffer level over time</h1>
+<div id = "chart2"></div>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="../bufferGraph.js"></script>
+<script>
+    var lineArr2 = [];
+    var MAX_LENGTH2 = 100;
+    var duration2 = 500;
+    var chart2 = realTimeLineChart2();
+
+    function initData2() {
+      var now = new Date();
+      for (var i = 0; i < MAX_LENGTH2; ++i) {
+        lineArr2.push({
+          time: new Date(now.getTime() - ((MAX_LENGTH2 - i) * duration2)),
+          x: 0
+        });
+      }
+    }
+
+    function updateData2() {
+      var now = new Date();
+      try {
+        //var receivedBitRate = JSON.parse(window.localStorage.getItem('bitRate'));
+        var receivedBufferRate = JSON.parse(window.localStorage.getItem('buffer'));
+
+        var bitData2 = {
+            time: now,
+            //x : receivedBitRate
+            x: receivedBufferRate
+        };
+        lineArr2.push(bitData2);
+
+
+        if (lineArr2.length > 30) {
+            lineArr2.shift();
+        }
+        d3.select("#chart2").datum(lineArr2).call(chart2);
+      } catch (e) {
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      initData2();
+      window.setInterval(updateData2, 500);
+      d3.select("#chart2").datum(lineArr2).call(chart2);
     });
 </script>
 </body>

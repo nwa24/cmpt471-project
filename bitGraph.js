@@ -1,5 +1,5 @@
 function realTimeLineChart() {
-  var margin = {top: 20, right: 20, bottom: 20, left: 20},
+  var margin = {top: 20, right: 20, bottom: 20, left: 40},
       width = 800,
       height = 500,
       duration = 500,
@@ -16,27 +16,24 @@ function realTimeLineChart() {
         };
       });
 
-      var t = d3.transition().duration(duration).ease(d3.easeLinear),
-          x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]),
-          y = d3.scaleLinear().rangeRound([height-margin.top-margin.bottom, 0]),
-          z = d3.scaleOrdinal(color);
+      var t = d3.transition().duration(duration).ease(d3.easeLinear);
+      var x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]);
+      var y = d3.scaleLinear().rangeRound([height-margin.top-margin.bottom, 0]);
+      var l = d3.scaleOrdinal(color);
 
-      var xMin = d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })});
-      var xMax = new Date(new Date(d3.max(data, function(c) {
-        return d3.max(c.values, function(d) { return d.time; })
-      })).getTime() - (duration*2));
+      x.domain([
+        d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })}),
+        new Date(new Date(d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.time; })})).getTime() - (duration*2))
+      ]);
 
-      x.domain([xMin, xMax]);
       y.domain([
         d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.value; })}),
         d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.value; })})
       ]);
-      z.domain(data.map(function(c) { return c.label; }));
 
-      var line = d3.line()
-        .curve(d3.curveBasis)
-        .x(function(d) { return x(d.time); })
-        .y(function(d) { return y(d.value); });
+      l.domain(data.map(function(c) { return c.label; }));
+
+      var line = d3.line().curve(d3.curveBasis).x(function(d) { return x(d.time); }).y(function(d) { return y(d.value); });
 
       var svg = d3.select(this).selectAll("svg").data([data]);
       var gEnter = svg.enter().append("svg").append("g");
@@ -54,11 +51,11 @@ function realTimeLineChart() {
           .append("path")
             .attr("class", "data");
 
-      var svg = selection.select("svg");
-      svg.attr('width', width).attr('height', height);
-      var g = svg.select("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+
+      svg = selection.select("svg");
+      svg.attr('width', width).attr('height', height);
+      var g = svg.select("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
       g.select("g.axis.x")
         .attr("transform", "translate(0," + (height-margin.bottom-margin.top) + ")")
         .transition(t)
@@ -67,15 +64,13 @@ function realTimeLineChart() {
         .transition(t)
         .attr("class", "axis y")
         .call(d3.axisLeft(y));
-
       g.select("defs clipPath rect")
         .transition(t)
         .attr("width", width-margin.left-margin.right)
         .attr("height", height-margin.top-margin.right);
-
       g.selectAll("g path.data")
         .data(data)
-        .style("stroke", function(d) { return z(d.label); })
+        .style("stroke", function(d) { return l(d.label); })
         .style("stroke-width", 1)
         .style("fill", "none")
         .transition()
@@ -83,14 +78,12 @@ function realTimeLineChart() {
         .ease(d3.easeLinear)
         .on("start", tick);
 
-
-      // For transitions https://bl.ocks.org/mbostock/1642874
       function tick() {
         d3.select(this)
           .attr("d", function(d) { return line(d.values); })
           .attr("transform", null);
 
-        var xMinLess = new Date(new Date(xMin).getTime() - duration);
+        var xMinLess = new Date(new Date(d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })})).getTime() - duration);
         d3.active(this)
             .attr("transform", "translate(" + x(xMinLess) + ",0)")
           .transition()
@@ -98,8 +91,5 @@ function realTimeLineChart() {
       }
     });
   }
-
-
-
   return chart;
 }

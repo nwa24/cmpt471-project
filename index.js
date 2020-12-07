@@ -1,85 +1,105 @@
-//API to fetch historical data of Bitcoin Price Index
-const api = 'https://api.coindesk.com/v1/bpi/historical/close.json?start=2017-12-31&end=2018-04-01';
+function realTimeLineChart() {
+  var margin = {top: 20, right: 20, bottom: 20, left: 20},
+      width = 800,
+      height = 500,
+      duration = 500,
+      color = d3.schemeCategory10;
 
-/**
- * Loading data from API when DOM Content has been loaded'.
- */
-document.addEventListener("DOMContentLoaded", function(event) {
-fetch(api)
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        var parsedData = parseData(data);
-        drawChart(parsedData);
-    })
-    .catch(function(err) { console.log(err); })
-});
+  function chart(selection) {
+    selection.each(function(data) {
+      data = ["x"].map(function(c) {
+        return {
+          label: c,
+          values: data.map(function(d) {
+            return {time: +d.time, value: d[c]};
+          })
+        };
+      });
 
-/**
- * Parse data into key-value pairs
- * @param {object} data Object containing historical data of BPI
- */
-function parseData(data) {
-    var arr = [];
-    for (var i in data.bpi) {
-        arr.push({
-            date: new Date(i), //date
-            value: +data.bpi[i] //convert string to number
-        });
-    }
-    return arr;
-}
+      var t = d3.transition().duration(duration).ease(d3.easeLinear),
+          x = d3.scaleTime().rangeRound([0, width-margin.left-margin.right]),
+          y = d3.scaleLinear().rangeRound([height-margin.top-margin.bottom, 0]),
+          z = d3.scaleOrdinal(color);
 
-/**
- * Creates a chart using D3
- * @param {object} data Object containing historical data of BPI
- */
-function drawChart(data) {
-var svgWidth = 600, svgHeight = 400;
-var margin = { top: 20, right: 20, bottom: 30, left: 50 };
-var width = svgWidth - margin.left - margin.right;
-var height = svgHeight - margin.top - margin.bottom;
+      var xMin = d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.time; })});
+      var xMax = new Date(new Date(d3.max(data, function(c) {
+        return d3.max(c.values, function(d) { return d.time; })
+      })).getTime() - (duration*2));
 
-var svg = d3.select('svg')
-    .attr("width", svgWidth)
-    .attr("height", svgHeight);
-    
-var g = svg.append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      x.domain([xMin, xMax]);
+      y.domain([
+        d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.value; })}),
+        d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.value; })})
+      ]);
+      z.domain(data.map(function(c) { return c.label; }));
 
-var x = d3.scaleTime()
-    .rangeRound([0, width]);
+      var line = d3.line()
+        .curve(d3.curveBasis)
+        .x(function(d) { return x(d.time); })
+        .y(function(d) { return y(d.value); });
 
-var y = d3.scaleLinear()
-    .rangeRound([height, 0]);
+      var svg = d3.select(this).selectAll("svg").data([data]);
+      var gEnter = svg.enter().append("svg").append("g");
+      gEnter.append("g").attr("class", "axis x");
+      gEnter.append("g").attr("class", "axis y");
+      gEnter.append("defs").append("clipPath")
+          .attr("id", "clip")
+        .append("rect")
+          .attr("width", width-margin.left-margin.right)
+          .attr("height", height-margin.top-margin.bottom);
+      gEnter.append("g")
+          .attr("class", "lines")
+          .attr("clip-path", "url(#clip)")
+        .selectAll(".data").data(data).enter()
+          .append("path")
+            .attr("class", "data");
 
-var line = d3.line()
-    .x(function(d) { return x(d.date)})
-    .y(function(d) { return y(d.value)})
-    x.domain(d3.extent(data, function(d) { return d.date }));
-    y.domain(d3.extent(data, function(d) { return d.value }));
+      var svg = selection.select("svg");
+      svg.attr('width', width).attr('height', height);
+      var g = svg.select("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-g.append("g")
-    .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(x))
-    .select(".domain")
-    .remove();
+      g.select("g.axis.x")
+        .attr("transform", "translate(0," + (height-margin.bottom-margin.top) + ")")
+        .transition(t)
+        .call(d3.axisBottom(x).ticks(5));
+      g.select("g.axis.y")
+        .transition(t)
+        .attr("class", "axis y")
+        .call(d3.axisLeft(y));
 
-g.append("g")
-    .call(d3.axisLeft(y))
-    .append("text")
-    .attr("fill", "#000")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 6)
-    .attr("dy", "0.71em")
-    .attr("text-anchor", "end")
-    .text("Price ($)");
+      g.select("defs clipPath rect")
+        .transition(t)
+        .attr("width", width-margin.left-margin.right)
+        .attr("height", height-margin.top-margin.right);
 
-g.append("path")
-    .datum(data)
-    .attr("fill", "none")
-    .attr("stroke", "steelblue")
-    .attr("stroke-linejoin", "round")
-    .attr("stroke-linecap", "round")
-    .attr("stroke-width", 1.5)
-    .attr("d", line);
+      g.selectAll("g path.data")
+        .data(data)
+        .style("stroke", function(d) { return z(d.label); })
+        .style("stroke-width", 1)
+        .style("fill", "none")
+        .transition()
+        .duration(duration)
+        .ease(d3.easeLinear)
+        .on("start", tick);
+
+
+      // For transitions https://bl.ocks.org/mbostock/1642874
+      function tick() {
+        d3.select(this)
+          .attr("d", function(d) { return line(d.values); })
+          .attr("transform", null);
+
+        var xMinLess = new Date(new Date(xMin).getTime() - duration);
+        d3.active(this)
+            .attr("transform", "translate(" + x(xMinLess) + ",0)")
+          .transition()
+            .on("start", tick);
+      }
+    });
+  }
+
+
+
+  return chart;
 }

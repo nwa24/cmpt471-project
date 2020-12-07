@@ -32,6 +32,43 @@
                 }
             })
             player.initialize(video, url, true);
+
+            player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function () {
+                clearInterval(eventPoller);
+                clearInterval(bitrateCalculator);
+             });
+
+        var eventPoller = setInterval(function () {
+            var streamInfo = player.getActiveStream().getStreamInfo();
+            var dashMetrics = player.getDashMetrics();
+            var dashAdapter = player.getDashAdapter();
+
+            if (dashMetrics && streamInfo) {
+                const periodIdx = streamInfo.index;
+                var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+                var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+                var bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
+                var adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo)
+                var frameRate = adaptation.Representation_asArray.find(function (rep) {
+                    return rep.id === repSwitch.to
+                }).frameRate;
+                document.getElementById('bufferLevel').innerText = bufferLevel + " secs";
+                document.getElementById('frameRate').innerText = frameRate + " fps";
+                document.getElementById('reportedBitrate').innerText = bitrate + " Kbps";
+            }
+        }, 1000);
+
+        if (video.webkitVideoDecodedByteCount !== undefined) {
+            var lastDecodedByteCount = 0;
+            const bitrateInterval = 5;
+            var bitrateCalculator = setInterval(function () {
+                var calculatedBitrate = (((video.webkitVideoDecodedByteCount - lastDecodedByteCount) / 1000) * 8) / bitrateInterval;
+                document.getElementById('calculatedBitrate').innerText = Math.round(calculatedBitrate) + " Kbps";
+                lastDecodedByteCount = video.webkitVideoDecodedByteCount;
+            }, bitrateInterval * 1000);
+        } else {
+            document.getElementById('chrome-only').style.display = "none";
+        }
         }
     </script>
 </head>
@@ -39,11 +76,31 @@
 <div>
     <video id="videoPlayer" controls></video>
 </div>
+<div>
+    <strong>Reported bitrate:</strong>
+    <span id="reportedBitrate"></span>
+    <br/>
+    <strong>Buffer level:</strong>
+    <span id="bufferLevel"></span>
+    <div id="chrome-only">
+        <strong>Calculated bitrate:</strong>
+        <span id="calculatedBitrate"></span>
+    </div>
+    <strong>FrameRate:</strong>
+    <span id="frameRate"></span>
+</div>
 <script>
     // runs init() once the DOM has fully loaded
     document.addEventListener('DOMContentLoaded', function () {
         init();
     });
 </script>
+
+<h1>Line Chart using D3.js</h1>
+
+<svg class="bar-chart"></svg>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="../index.js"></script>
 </body>
 </html>

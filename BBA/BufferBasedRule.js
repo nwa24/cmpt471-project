@@ -9,9 +9,6 @@ function BufferBasedRuleClass() {
     let DashMetrics = factory.getSingletonFactoryByName('DashMetrics');
     let Debug = factory.getSingletonFactoryByName('Debug');
     let MetricsModel = factory.getSingletonFactoryByName('MetricsModel');
-    // let DashManifestModel = factory.getSingletonFactoryByName('DashManifestModel');
-    // let StreamController = factory.getSingletonFactoryByName('StreamController');
-    // let MediaPlayerModel = factory.getSingletonFactoryByName('MediaPlayerModel')
 
     let context = this.context;
     let instance,
@@ -88,23 +85,22 @@ function BufferBasedRuleClass() {
         return request.trace.reduce((a, b) => a + b.b[0], 0);
     }
 
-    function getStartUpQuality(qualityPrevious, lastRequest, averageThroughPut){
+    function getStartUpQuality(qualityPrevious, lastRequest, bitRateList){
         if(lastRequest === null){
             return 0;
         }
 
         //Calculate Delta B
         let downloadBytes = getBytesLength(lastRequest);
-        let latencyTime = lastRequest.tresponse.getTime() - lastRequest.trequest.getTime() || 1; // in milliseconds
-        let downloadTime = lastRequest._tfinish.getTime() - lastRequest.tresponse.getTime() || 1; // in milliseconds
-        // let chunkDuration = lastRequest.
+        let latencyTime = lastRequest.tresponse.getTime() - lastRequest.trequest.getTime() || 1;
+        let downloadTime = lastRequest._tfinish.getTime() - lastRequest.tresponse.getTime() || 1;
 
-        let throughput = Math.round((8 * downloadBytes) / downloadTime + latencyTime); // bits/ms = kbits/s
+        let throughput = Math.round((8 * downloadBytes) / downloadTime + latencyTime);
 
         //Suggest next quality if Delta B > 0.875 * V
-        let deltaB = 4 - (8 * downloadBytes / averageThroughPut); //CHECK
+        let deltaB = 4 - ( downloadBytes / throughput); //CHECK
         if(deltaB > (0.875 * 4)){
-            return qualityPrevious + 1;
+            return getMinGreater(bitRateList, qualityPrevious);
         } else {
             return qualityPrevious;
         }
@@ -113,7 +109,6 @@ function BufferBasedRuleClass() {
     }
 
     function getNextQuality(bufferLevel, qualityPrevious, bitRateList){
-        //ratePrevious = currentQuality (bit rate)
         let rateMax = bitRateList.length - 1;
         let rateMin = 0;
         let ratePlus = getQualityRatePlus(qualityPrevious, bitRateList);
@@ -137,12 +132,11 @@ function BufferBasedRuleClass() {
             rateNext = qualityPrevious;
         }
 
-        console.log("Rate Next: " + rateNext);
+        // console.log("Rate Next: " + rateNext);
         return rateNext;
     }
 
 
-    // Give bitrate based on buffer health
     function getMaxIndex(rulesContext) {
 
         let mediaType = rulesContext.getMediaInfo().type;
@@ -160,8 +154,6 @@ function BufferBasedRuleClass() {
 
             //Get last request information for start up
             let lastHttpRequest = dashMetrics.getCurrentHttpRequest(mediaType);
-            let throughputHistory = abrController.getThroughputHistory();
-            let averageThroughput = throughputHistory.getAverageThroughput(mediaType)
 
 
             //Get Quality information
@@ -170,10 +162,11 @@ function BufferBasedRuleClass() {
 
             //Get current buffer health
             let bufferLevel = dashMetrics.getCurrentBufferLevel(mediaType);
-            console.log(bufferLevel + " secs");
+            // console.log(bufferLevel + " secs");
 
             let nextQuality = getNextQuality(bufferLevel, currentQuality, bitrateList);
-            let startUpQuality = getStartUpQuality(currentQuality, lastHttpRequest, averageThroughput)
+            let startUpQuality = getStartUpQuality(currentQuality, lastHttpRequest, bitrateList)
+            // console.log("Startup:" + startUpQuality + " Next: " + nextQuality);
 
             //Check whether to use buffer based quality or start up quality
             if(nextQuality > startUpQuality){

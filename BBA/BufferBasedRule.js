@@ -98,11 +98,11 @@ function BufferBasedRuleClass() {
         let throughput = Math.round((8 * downloadBytes) / downloadTime + latencyTime);
 
         //Suggest next quality if Delta B > 0.875 * V
-        let deltaB = 4 - ( downloadBytes / throughput); //CHECK
+        let deltaB = 4 - ( downloadBytes / throughput);
         if(deltaB > (0.875 * 4)){
             return getMinGreater(bitRateList, qualityPrevious);
         } else {
-            return qualityPrevious;
+            return 0;
         }
 
 

@@ -21,7 +21,7 @@ function BufferBasedRuleClass() {
     function getMinGreater(bitRateList, rateQuality) {
         let maxQuality = bitRateList.length - 1;
         let minGreater = rateQuality + 1;
-        if(rateQuality > maxQuality){
+        if(minGreater > maxQuality){
             return maxQuality;
         } else {
             return minGreater;
@@ -31,7 +31,7 @@ function BufferBasedRuleClass() {
     function getMaxSmaller(bitRateList, rateQuality) {
         let minQuality = 0;
         let maxSmaller = rateQuality - 1;
-        if(rateQuality < minQuality){
+        if(maxSmaller < minQuality){
             return minQuality;
         } else {
             return maxSmaller;
@@ -95,14 +95,14 @@ function BufferBasedRuleClass() {
         let latencyTime = lastRequest.tresponse.getTime() - lastRequest.trequest.getTime() || 1;
         let downloadTime = lastRequest._tfinish.getTime() - lastRequest.tresponse.getTime() || 1;
 
-        let throughput = Math.round((8 * downloadBytes) / downloadTime + latencyTime);
+        let throughput = Math.round(8 * (downloadBytes) / downloadTime + latencyTime);
 
         //Suggest next quality if Delta B > 0.875 * V
-        let deltaB = 4 - ( downloadBytes / throughput);
+        let deltaB = 4 - (8 * downloadBytes / throughput);
         if(deltaB > (0.875 * 4)){
             return getMinGreater(bitRateList, qualityPrevious);
         } else {
-            return 0;
+            return getMaxSmaller(bitRateList, qualityPrevious);
         }
 
 
@@ -166,7 +166,7 @@ function BufferBasedRuleClass() {
 
             let nextQuality = getNextQuality(bufferLevel, currentQuality, bitrateList);
             let startUpQuality = getStartUpQuality(currentQuality, lastHttpRequest, bitrateList)
-            // console.log("Startup:" + startUpQuality + " Next: " + nextQuality);
+            console.log("Startup:" + startUpQuality + " Next: " + nextQuality);
 
             //Check whether to use buffer based quality or start up quality
             if(nextQuality > startUpQuality){
@@ -174,7 +174,7 @@ function BufferBasedRuleClass() {
             } else {
                 switchRequest.quality = startUpQuality;
             }
-
+            console.log("Quality: " + switchRequest.quality);
             switchRequest.priority = SwitchRequest.PRIORITY.DEFAULT;
         }
 
